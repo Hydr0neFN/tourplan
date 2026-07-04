@@ -1,0 +1,16 @@
+[Unit]
+Description=tourplan scheduling webapp
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/tourplan
+Environment=TOURPLAN_BASE_URL=https://plan.example.com
+ExecStart=/root/tourplan/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8100 --proxy-headers --forwarded-allow-ips 127.0.0.1
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Admins · {{ t.app_name }}{% endblock %}
+{% block body %}
+<main class="admin-shell" style="max-width:560px">
+  <div class="topbar">
+    <div>
+      <p class="small" style="margin:0 0 2px"><a href="/admin">← {% if lang == 'zh' %}全部規劃{% else %}All plans{% endif %}</a></p>
+      <h1>{% if lang == 'zh' %}管理員帳號{% else %}Admin accounts{% endif %}</h1>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>{% if lang == 'zh' %}新增管理員{% else %}Add admin{% endif %}</h2>
+    {% if error == 'weak' %}<p class="err">{% if lang == 'zh' %}帳號必填，密碼至少8碼{% else %}Username required, password min 8 chars{% endif %}</p>{% endif %}
+    {% if error == 'dup' %}<p class="err">{% if lang == 'zh' %}帳號已存在{% else %}Username already exists{% endif %}</p>{% endif %}
+    <form method="post" action="/admin/users/create">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <div class="frow" style="align-items:flex-end">
+        <div>
+          <label>{% if lang == 'zh' %}帳號{% else %}Username{% endif %}</label>
+          <input type="text" name="username" maxlength="30" autocomplete="off">
+        </div>
+        <div>
+          <label>{% if lang == 'zh' %}密碼{% else %}Password{% endif %}</label>
+          <input type="password" name="password" autocomplete="new-password">
+        </div>
+        <button class="btn primary mini" type="submit" style="padding:9px 18px">{% if lang == 'zh' %}新增{% else %}Add{% endif %}</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>{% if lang == 'zh' %}現有帳號{% else %}Accounts{% endif %}</h2>
+    <table class="list">
+      <tr><th>{% if lang == 'zh' %}帳號{% else %}Username{% endif %}</th><th>{% if lang == 'zh' %}建立於{% else %}Created{% endif %}</th><th></th></tr>
+      {% for u in users %}
+      <tr>
+        <td>{{ u.username }}{% if u.id == admin.id %} <span class="tag open">{% if lang == 'zh' %}你{% else %}you{% endif %}</span>{% endif %}</td>
+        <td class="small muted">{{ u.created_at[:10] }}</td>
+        <td style="text-align:right">
+          {% if u.id != admin.id %}
+          <form method="post" action="/admin/users/{{ u.id }}/delete" onsubmit="return confirm('{% if lang == 'zh' %}確定刪除此帳號？{% else %}Delete this account?{% endif %}')" style="display:inline">
+            <input type="hidden" name="csrf" value="{{ csrf }}">
+            <button class="btn mini danger" type="submit">{% if lang == 'zh' %}刪除{% else %}Delete{% endif %}</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+</main>
+{% endblock %}

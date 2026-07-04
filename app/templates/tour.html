@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}{{ state.tour.title }} · {{ t.app_name }}{% endblock %}
+{% block body %}
+<main class="shell">
+  <header class="tour-head">
+    <div>
+      <h1 class="tour-title">{{ state.tour.title }}</h1>
+      <p class="muted small">
+        {{ t.plannable }} {{ state.tour.date_start }} – {{ state.tour.date_end }}
+        {% if state.tour.deadline %} · {{ t.deadline_label }} {{ state.tour.deadline }}{% endif %}
+        {% if state.tour.description %}<br>{{ state.tour.description }}{% endif %}
+      </p>
+    </div>
+    <div class="head-actions">
+      <a class="lang-pill" href="?lang={{ t.lang_other }}">{{ t.lang_toggle }}</a>
+      <button id="btn-tutorial" class="lang-pill" type="button">? {{ t.replay_tutorial }}</button>
+    </div>
+  </header>
+
+  {% if not state.tour.open_now %}
+  <div class="banner-closed">{{ t.closed_banner }}</div>
+  {% endif %}
+
+  <div id="months"></div>
+  <p class="muted small center-text" id="tap-hint">{{ t.tap_hint }}</p>
+
+  <section class="plist-wrap">
+    <p class="muted small">{{ t.participants }} · {{ t.participants_hint }}</p>
+    <div id="plist"></div>
+  </section>
+</main>
+
+<div id="modal-root"></div>
+
+<script id="bootstrap" type="application/json">{{ state | tojson }}</script>
+<script id="i18n" type="application/json">{{ t | tojson }}</script>
+<script>window.LANG = {{ lang | tojson }};</script>
+<script src="/static/tour.js"></script>
+{% endblock %}

@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Admin · {{ t.app_name }}{% endblock %}
+{% block body %}
+<main class="admin-shell">
+  <div class="topbar">
+    <h1>📅 {{ t.app_name }}</h1>
+    <nav>
+      <a class="lang-pill" href="/admin/users">{% if lang == 'zh' %}管理員帳號{% else %}Admins{% endif %}</a>
+      <a class="lang-pill" href="?lang={{ t.lang_other }}">{{ t.lang_toggle }}</a>
+      <form method="post" action="/admin/logout" style="display:inline">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <button class="lang-pill" type="submit">{% if lang == 'zh' %}登出{% else %}Log out{% endif %}</button>
+      </form>
+    </nav>
+  </div>
+
+  <div class="card">
+    <h2>{% if lang == 'zh' %}建立新規劃{% else %}Create a plan{% endif %}</h2>
+    {% if error == 'tour' %}<p class="err">{% if lang == 'zh' %}請確認名稱與日期範圍（起 ≤ 迄，至多370天）{% else %}Check title and date range (start ≤ end, max 370 days){% endif %}</p>{% endif %}
+    <form method="post" action="/admin/tours/create">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <div class="frow">
+        <div style="flex:2; min-width:200px">
+          <label>{% if lang == 'zh' %}名稱{% else %}Title{% endif %}</label>
+          <input type="text" name="title" maxlength="60" style="width:100%" placeholder="{% if lang == 'zh' %}花蓮三日遊{% else %}Hualien trip{% endif %}">
+        </div>
+        <div style="flex:3; min-width:240px">
+          <label>{% if lang == 'zh' %}說明（選填）{% else %}Description (optional){% endif %}</label>
+          <input type="text" name="description" maxlength="200" style="width:100%">
+        </div>
+      </div>
+      <div class="frow" style="align-items:flex-end">
+        <div>
+          <label>{% if lang == 'zh' %}開始日{% else %}Start{% endif %}</label>
+          <input type="date" name="date_start" required>
+        </div>
+        <div>
+          <label>{% if lang == 'zh' %}結束日{% else %}End{% endif %}</label>
+          <input type="date" name="date_end" required>
+        </div>
+        <div>
+          <label>{% if lang == 'zh' %}截止收單日（選填）{% else %}Deadline (optional){% endif %}</label>
+          <input type="date" name="deadline">
+        </div>
+        <div>
+          <label>{% if lang == 'zh' %}顯示參加者名字{% else %}Show names{% endif %}</label>
+          <select name="show_names" style="font:inherit; padding:8px 10px; border:1px solid var(--line); border-radius:8px">
+            <option value="1">{% if lang == 'zh' %}顯示{% else %}Show{% endif %}</option>
+            <option value="0">{% if lang == 'zh' %}匿名（只顯示圖示暱稱）{% else %}Anonymous (icon nicknames){% endif %}</option>
+          </select>
+        </div>
+        <button class="btn primary mini" type="submit" style="padding:9px 18px">{% if lang == 'zh' %}建立{% else %}Create{% endif %}</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>{% if lang == 'zh' %}所有規劃{% else %}All plans{% endif %}</h2>
+    <table class="list">
+      <tr>
+        <th>{% if lang == 'zh' %}名稱{% else %}Title{% endif %}</th>
+        <th>{% if lang == 'zh' %}日期{% else %}Dates{% endif %}</th>
+        <th>{% if lang == 'zh' %}人數{% else %}People{% endif %}</th>
+        <th>{% if lang == 'zh' %}狀態{% else %}Status{% endif %}</th>
+        <th></th>
+      </tr>
+      {% for tour in tours %}
+      <tr>
+        <td><a href="/admin/tours/{{ tour.id }}">{{ tour.title }}</a></td>
+        <td class="small">{{ tour.date_start }} – {{ tour.date_end }}{% if tour.deadline %}<br>{% if lang == 'zh' %}截止收單{% else %}vote by{% endif %} {{ tour.deadline }}{% endif %}</td>
+        <td>{{ tour.n }}</td>
+        <td><span class="tag {{ tour.status }}">{{ '開放' if tour.status == 'open' and lang == 'zh' else ('截止' if lang == 'zh' else tour.status) }}</span></td>
+        <td style="text-align:right; white-space:nowrap">
+          <button class="btn mini" type="button" data-link="{{ base_url }}/t/{{ tour.slug }}" onclick="copyLink(this)">{% if lang == 'zh' %}複製連結{% else %}Copy link{% endif %}</button>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" class="muted small">{% if lang == 'zh' %}還沒有規劃，先建立一個吧{% else %}No plans yet — create one above{% endif %}</td></tr>
+      {% endfor %}
+    </table>
+  </div>
+</main>
+<script>
+function copyLink(btn) {
+  navigator.clipboard.writeText(btn.getAttribute("data-link")).then(function () {
+    var old = btn.textContent; btn.textContent = "✓"; setTimeout(function () { btn.textContent = old; }, 1200);
+  });
+}
+</script>
+{% endblock %}

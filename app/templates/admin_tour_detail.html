@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}{{ tour.title }} · Admin{% endblock %}
+{% block body %}
+<main class="admin-shell">
+  <div class="topbar">
+    <div>
+      <p class="small" style="margin:0 0 2px"><a href="/admin">← {% if lang == 'zh' %}全部規劃{% else %}All plans{% endif %}</a></p>
+      <h1>{{ tour.title }} <span class="tag {{ tour.status }}">{{ ('開放' if tour.status == 'open' else '截止') if lang == 'zh' else tour.status }}</span></h1>
+      <p class="small muted" style="margin:2px 0 0">{{ tour.date_start }} – {{ tour.date_end }}{% if tour.deadline %} · {% if lang == 'zh' %}截止收單{% else %}vote by{% endif %} {{ tour.deadline }}{% endif %}{% if tour.description %} · {{ tour.description }}{% endif %}</p>
+    </div>
+    <nav>
+      <button class="btn mini" type="button" data-link="{{ base_url }}/t/{{ tour.slug }}" onclick="copyLink(this)">{% if lang == 'zh' %}複製連結{% else %}Copy link{% endif %}</button>
+      <a class="lang-pill" href="{{ base_url }}/t/{{ tour.slug }}" target="_blank">{% if lang == 'zh' %}開啟頁面{% else %}Open page{% endif %}</a>
+    </nav>
+  </div>
+
+  <div class="card">
+    <div class="frow" style="margin-bottom:0">
+      <form method="post" action="/admin/tours/{{ tour.id }}/toggle-status">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <button class="btn mini" type="submit">{% if tour.status == 'open' %}{% if lang == 'zh' %}截止收單{% else %}Close{% endif %}{% else %}{% if lang == 'zh' %}重新開放{% else %}Reopen{% endif %}{% endif %}</button>
+      </form>
+      <form method="post" action="/admin/tours/{{ tour.id }}/toggle-names">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <button class="btn mini" type="submit">{% if tour.show_names %}{% if lang == 'zh' %}改為匿名顯示{% else %}Make anonymous{% endif %}{% else %}{% if lang == 'zh' %}顯示真實名字{% else %}Show real names{% endif %}{% endif %}</button>
+      </form>
+      <form method="post" action="/admin/tours/{{ tour.id }}/delete" onsubmit="return confirm('{% if lang == 'zh' %}確定刪除整個規劃與所有回覆？{% else %}Delete this plan and all responses?{% endif %}')">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <button class="btn mini danger" type="submit">{% if lang == 'zh' %}刪除{% else %}Delete{% endif %}</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="card results">
+    <h2>{% if lang == 'zh' %}回覆總表（管理員視角：含真實名字）{% else %}Responses (admin view: real names){% endif %}</h2>
+    {% if visitors %}
+    <table>
+      <tr>
+        <th>{% if lang == 'zh' %}日期{% else %}Date{% endif %}</th>
+        {% for v in visitors %}<th>{{ v.emoji }}<br>{{ v.label }}</th>{% endfor %}
+        <th>{% if lang == 'zh' %}可以{% else %}OK{% endif %}</th>
+      </tr>
+      {% for day in days %}
+      <tr{% if day.count == best and best > 0 %} class="best"{% endif %}>
+        <td class="datecol">{{ day.date.strftime('%m/%d') }} {{ t.weekdays[day.date.isoweekday() % 7] }}</td>
+        {% for v in visitors %}
+        <td class="{{ 'ok' if v.id in day.ok_ids else 'no' }}">{{ '✓' if v.id in day.ok_ids else '✕' }}</td>
+        {% endfor %}
+        <td><strong>{{ day.count }}</strong>/{{ visitors | length }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% else %}
+    <p class="muted small">{% if lang == 'zh' %}還沒有人回覆{% else %}No responses yet{% endif %}</p>
+    {% endif %}
+  </div>
+</main>
+<script>
+function copyLink(btn) {
+  navigator.clipboard.writeText(btn.getAttribute("data-link")).then(function () {
+    var old = btn.textContent; btn.textContent = "✓"; setTimeout(function () { btn.textContent = old; }, 1200);
+  });
+}
+</script>
+{% endblock %}
