@@ -10,12 +10,13 @@ Think Doodle/When2meet, but: reversed defaults (every day starts as *available*,
 
 - **Tap to toggle** — every plannable day starts green (可以). Tap it once → red (不行). Tap again → back. No forms, no drag-select, nothing to get lost in.
 - **No visitor accounts** — visitors optionally enter a name (or skip). Identity is a signed cookie; returning visitors keep their votes. Nameless visitors get an emoji nickname from a 24-icon pool (小花 🌸, 小蛙 🐸, …).
-- **Glanceable aggregates** — each day cell shows other people's votes as tiny emoji rows (green = OK, red = not OK, `🐸+2` overflow).
+- **Glanceable aggregates** — each day cell shows who *can* attend as a tiny emoji row (`🐸+2` overflow); who can't is deliberately kept out of the cells (mixed rows confused elderly testers) and lives in the participant list instead.
 - **Per-person summary** — participant list shows each person's "not OK" dates as compressed ranges (`8/11、14–15`); tap to expand full detail. Designed so a mis-tap never changes state — elderly-safe.
 - **Multi-month calendars** — range can span months; they stack vertically (2-up on desktop).
 - **Multiple concurrent plans** — each plan gets an unguessable link (`/t/<slug>`); host runs as many as needed.
 - **Voting deadline (截止收單)** — optional per-plan cutoff date (Taiwan time, inclusive); voting locks automatically, plus a manual close/reopen toggle.
 - **Anonymity switch** — per-plan: show real names, or show everyone as emoji nicknames (host results always show real names).
+- **Multi-host** — multiple admin accounts on one instance; each host sees and manages only their own plans. Hosts can remove a participant (and their votes) straight from the results table — handy for phantom identities created by incognito windows or cleared cookies.
 - **First-visit tutorial** — 3-step overlay, replayable via the `?` button.
 - **Bilingual** — 繁體中文（台灣）default, English toggle, per-user cookie.
 - **Near-realtime** — 5-second polling + instant refresh when the tab regains focus; all responses `Cache-Control: no-store` so mobile browsers never show stale votes.
