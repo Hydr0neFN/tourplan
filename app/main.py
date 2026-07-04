@@ -564,6 +564,20 @@ def admin_delete_tour(request: Request, tour_id: int, csrf: str = Form("")):
     return RedirectResponse("/admin", status_code=303)
 
 
+@app.post("/admin/tours/{tour_id}/visitors/{visitor_id}/delete")
+def admin_delete_visitor(request: Request, tour_id: int, visitor_id: int, csrf: str = Form("")):
+    admin, tid = _tour_post(request, tour_id, csrf)
+    if isinstance(admin, RedirectResponse):
+        return admin
+    con = db.connect()
+    try:
+        con.execute("DELETE FROM visitors WHERE id=? AND tour_id=?", (visitor_id, tid))
+        con.commit()
+    finally:
+        con.close()
+    return RedirectResponse(f"/admin/tours/{tid}", status_code=303)
+
+
 @app.get("/admin/tours/{tour_id}", response_class=HTMLResponse)
 def admin_tour_detail(request: Request, tour_id: int):
     admin = admin_guard(request)

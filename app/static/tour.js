@@ -114,7 +114,7 @@
         var oth = othersAt(di);
         h += '<div class="cell in ' + mine + (interactive ? "" : " readonly") +
           '" data-date="' + di + '"><span class="dnum">' + day + "</span>" +
-          iconRow(oth.yes, "okrow") + iconRow(oth.no, "norow") + "</div>";
+          iconRow(oth.yes, "okrow") + "</div>";
       }
       h += "</div></section>";
       m++;

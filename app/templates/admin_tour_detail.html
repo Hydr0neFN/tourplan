@@ -31,6 +31,26 @@
     </div>
   </div>
 
+  {% if visitors %}
+  <div class="card">
+    <h2>{% if lang == 'zh' %}參加者管理{% else %}Manage participants{% endif %}</h2>
+    <table class="list">
+      {% for v in visitors %}
+      <tr>
+        <td>{{ v.emoji }} {{ v.label }}</td>
+        <td style="text-align:right">
+          <form method="post" action="/admin/tours/{{ tour.id }}/visitors/{{ v.id }}/delete" style="display:inline" onsubmit="return confirm('{% if lang == 'zh' %}移除此參加者與其所有投票？{% else %}Remove this participant and all their votes?{% endif %}')">
+            <input type="hidden" name="csrf" value="{{ csrf }}">
+            <button class="btn mini danger" type="submit">{% if lang == 'zh' %}移除{% else %}Remove{% endif %}</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+    <p class="small muted" style="margin-bottom:0">{% if lang == 'zh' %}移除後，該人若再開連結會成為新的參加者（原投票已刪除）{% else %}Removed people become new participants if they reopen the link (their votes are deleted){% endif %}</p>
+  </div>
+  {% endif %}
+
   <div class="card results">
     <h2>{% if lang == 'zh' %}回覆總表（管理員視角：含真實名字）{% else %}Responses (admin view: real names){% endif %}</h2>
     {% if visitors %}
