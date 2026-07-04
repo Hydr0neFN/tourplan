@@ -58,9 +58,8 @@ h1 { font-size: 22px; font-weight: 600; margin: 0; }
 .cell.yes { background: var(--ok-bg); border-color: var(--ok-line); }
 .cell.no { background: var(--no-bg); border-color: var(--no-line); }
 .cell .dnum { font-weight: 600; }
-.cell .vrow { display: flex; align-items: center; gap: 1px; font-size: 11px; margin-top: 2px; overflow: hidden; border-radius: 4px; padding: 1px 3px; width: fit-content; max-width: 100%; }
-.cell .vrow.okrow { color: var(--ok-ink); background: rgba(151, 196, 89, 0.28); }
-.cell .vrow.norow { color: var(--no-ink); background: rgba(226, 75, 74, 0.16); }
+.cell .vrow { display: flex; align-items: center; gap: 1px; font-size: 11px; margin-top: 2px; overflow: hidden; }
+.cell .vrow.okrow { color: var(--ok-ink); }
 .cell .vrow .em { font-size: 12px; line-height: 1; }
 .cell.readonly { cursor: default; }
 
