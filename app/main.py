@@ -1,5 +1,6 @@
 """tourplan — family tour date-picking app (FastAPI + SQLite)."""
 import datetime
+import hashlib
 import os
 import pathlib
 import secrets
@@ -17,6 +18,24 @@ BASE = pathlib.Path(__file__).resolve().parent
 app = FastAPI(title="tourplan", docs_url=None, redoc_url=None, openapi_url=None)
 app.mount("/static", StaticFiles(directory=BASE / "static"), name="static")
 templates = Jinja2Templates(directory=BASE / "templates")
+
+
+def _static_version() -> str:
+    h = hashlib.md5()
+    for p in sorted((BASE / "static").glob("*")):
+        h.update(p.read_bytes())
+    return h.hexdigest()[:8]
+
+
+templates.env.globals["static_v"] = _static_version()
+
+
+@app.middleware("http")
+async def static_cache_headers(request: Request, call_next):
+    resp = await call_next(request)
+    if request.url.path.startswith("/static/"):
+        resp.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+    return resp
 
 MAX_RANGE_DAYS = 370
 MAX_NAME_LEN = 20

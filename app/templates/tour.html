@@ -35,5 +35,5 @@
 <script id="bootstrap" type="application/json">{{ state | tojson }}</script>
 <script id="i18n" type="application/json">{{ t | tojson }}</script>
 <script>window.LANG = {{ lang | tojson }};</script>
-<script src="/static/tour.js"></script>
+<script src="/static/tour.js?v={{ static_v }}"></script>
 {% endblock %}
