@@ -83,7 +83,10 @@ def startup() -> None:
                 "INSERT INTO admins(username, pw_hash, must_change) VALUES(?,?,1)",
                 ("admin", auth.hash_password("admin")),
             )
-            con.commit()
+        con.execute(
+            "UPDATE tours SET owner_id=(SELECT MIN(id) FROM admins) WHERE owner_id IS NULL"
+        )
+        con.commit()
     finally:
         con.close()
 
@@ -457,7 +460,8 @@ def admin_home(request: Request):
     try:
         tours = con.execute(
             "SELECT t.*, (SELECT COUNT(*) FROM visitors v WHERE v.tour_id=t.id) n "
-            "FROM tours t ORDER BY t.id DESC"
+            "FROM tours t WHERE t.owner_id=? ORDER BY t.id DESC",
+            (admin["id"],),
         ).fetchall()
     finally:
         con.close()
@@ -498,10 +502,10 @@ def admin_create_tour(
             if not con.execute("SELECT 1 FROM tours WHERE slug=?", (slug,)).fetchone():
                 break
         con.execute(
-            "INSERT INTO tours(slug, title, description, date_start, date_end, show_names, deadline)"
-            " VALUES(?,?,?,?,?,?,?)",
+            "INSERT INTO tours(slug, title, description, date_start, date_end, show_names, deadline, owner_id)"
+            " VALUES(?,?,?,?,?,?,?,?)",
             (slug, title, description.strip()[:200], d0.isoformat(), d1.isoformat(),
-             1 if show_names == "1" else 0, dl.isoformat() if dl else None),
+             1 if show_names == "1" else 0, dl.isoformat() if dl else None, admin["id"]),
         )
         con.commit()
     finally:
@@ -527,8 +531,8 @@ def admin_toggle_status(request: Request, tour_id: int, csrf: str = Form("")):
     try:
         con.execute(
             "UPDATE tours SET status = CASE status WHEN 'open' THEN 'closed' ELSE 'open' END"
-            " WHERE id=?",
-            (tid,),
+            " WHERE id=? AND owner_id=?",
+            (tid, admin["id"]),
         )
         con.commit()
     finally:
@@ -543,7 +547,10 @@ def admin_toggle_names(request: Request, tour_id: int, csrf: str = Form("")):
         return admin
     con = db.connect()
     try:
-        con.execute("UPDATE tours SET show_names = 1 - show_names WHERE id=?", (tid,))
+        con.execute(
+            "UPDATE tours SET show_names = 1 - show_names WHERE id=? AND owner_id=?",
+            (tid, admin["id"]),
+        )
         con.commit()
     finally:
         con.close()
@@ -557,7 +564,7 @@ def admin_delete_tour(request: Request, tour_id: int, csrf: str = Form("")):
         return admin
     con = db.connect()
     try:
-        con.execute("DELETE FROM tours WHERE id=?", (tid,))
+        con.execute("DELETE FROM tours WHERE id=? AND owner_id=?", (tid, admin["id"]))
         con.commit()
     finally:
         con.close()
@@ -571,6 +578,11 @@ def admin_delete_visitor(request: Request, tour_id: int, visitor_id: int, csrf: 
         return admin
     con = db.connect()
     try:
+        owned = con.execute(
+            "SELECT 1 FROM tours WHERE id=? AND owner_id=?", (tid, admin["id"])
+        ).fetchone()
+        if not owned:
+            return RedirectResponse("/admin", status_code=303)
         con.execute("DELETE FROM visitors WHERE id=? AND tour_id=?", (visitor_id, tid))
         con.commit()
     finally:
@@ -585,7 +597,9 @@ def admin_tour_detail(request: Request, tour_id: int):
         return admin
     con = db.connect()
     try:
-        tour = con.execute("SELECT * FROM tours WHERE id=?", (tour_id,)).fetchone()
+        tour = con.execute(
+            "SELECT * FROM tours WHERE id=? AND owner_id=?", (tour_id, admin["id"])
+        ).fetchone()
         if not tour:
             return RedirectResponse("/admin", status_code=303)
         visitors = con.execute(
@@ -693,6 +707,9 @@ def admin_delete_user(request: Request, user_id: int, csrf: str = Form("")):
     con = db.connect()
     try:
         if con.execute("SELECT COUNT(*) c FROM admins").fetchone()["c"] > 1:
+            con.execute(
+                "UPDATE tours SET owner_id=? WHERE owner_id=?", (admin["id"], user_id)
+            )
             con.execute("DELETE FROM admins WHERE id=?", (user_id,))
             con.commit()
     finally:

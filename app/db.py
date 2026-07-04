@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS tours(
   date_end TEXT NOT NULL,
   show_names INTEGER NOT NULL DEFAULT 1,
   status TEXT NOT NULL DEFAULT 'open',
+  owner_id INTEGER,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE TABLE IF NOT EXISTS visitors(
@@ -59,6 +60,8 @@ def init() -> None:
         cols = {r["name"] for r in con.execute("PRAGMA table_info(tours)")}
         if "deadline" not in cols:
             con.execute("ALTER TABLE tours ADD COLUMN deadline TEXT")
+        if "owner_id" not in cols:
+            con.execute("ALTER TABLE tours ADD COLUMN owner_id INTEGER")
         con.commit()
     finally:
         con.close()
