@@ -196,6 +196,7 @@ def tour_state(con: sqlite3.Connection, tour: sqlite3.Row, me: sqlite3.Row | Non
             "date_start": tour["date_start"],
             "date_end": tour["date_end"],
             "show_names": bool(tour["show_names"]),
+            "require_name": bool(tour["require_name"]),
             "status": tour["status"],
             "deadline": tour["deadline"],
             "open_now": tour_open_now(tour),
@@ -238,6 +239,8 @@ def join(request: Request, slug: str, body: dict = Body(default={})):
         if not tour_open_now(tour):
             return jresp({"error": "closed"}, status_code=403)
         me = get_visitor(con, tour["id"], request)
+        if not me and tour["require_name"] and not name:
+            return jresp({"error": "name_required"}, status_code=400)
         if not me:
             count = con.execute(
                 "SELECT COUNT(*) c FROM visitors WHERE tour_id=?", (tour["id"],)
@@ -484,6 +487,7 @@ def admin_create_tour(
     date_end: str = Form(""),
     deadline: str = Form(""),
     show_names: str = Form("1"),
+    require_name: str = Form("0"),
 ):
     admin = admin_guard(request)
     if isinstance(admin, RedirectResponse):
@@ -502,10 +506,11 @@ def admin_create_tour(
             if not con.execute("SELECT 1 FROM tours WHERE slug=?", (slug,)).fetchone():
                 break
         con.execute(
-            "INSERT INTO tours(slug, title, description, date_start, date_end, show_names, deadline, owner_id)"
-            " VALUES(?,?,?,?,?,?,?,?)",
+            "INSERT INTO tours(slug, title, description, date_start, date_end, show_names,"
+            " require_name, deadline, owner_id) VALUES(?,?,?,?,?,?,?,?,?)",
             (slug, title, description.strip()[:200], d0.isoformat(), d1.isoformat(),
-             1 if show_names == "1" else 0, dl.isoformat() if dl else None, admin["id"]),
+             1 if show_names == "1" else 0, 1 if require_name == "1" else 0,
+             dl.isoformat() if dl else None, admin["id"]),
         )
         con.commit()
     finally:
@@ -549,6 +554,23 @@ def admin_toggle_names(request: Request, tour_id: int, csrf: str = Form("")):
     try:
         con.execute(
             "UPDATE tours SET show_names = 1 - show_names WHERE id=? AND owner_id=?",
+            (tid, admin["id"]),
+        )
+        con.commit()
+    finally:
+        con.close()
+    return RedirectResponse(request.headers.get("referer") or "/admin", status_code=303)
+
+
+@app.post("/admin/tours/{tour_id}/toggle-require-name")
+def admin_toggle_require_name(request: Request, tour_id: int, csrf: str = Form("")):
+    admin, tid = _tour_post(request, tour_id, csrf)
+    if isinstance(admin, RedirectResponse):
+        return admin
+    con = db.connect()
+    try:
+        con.execute(
+            "UPDATE tours SET require_name = 1 - require_name WHERE id=? AND owner_id=?",
             (tid, admin["id"]),
         )
         con.commit()

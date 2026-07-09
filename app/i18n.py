@@ -35,6 +35,8 @@ STRINGS = {
         "replay_tutorial": "教學",
         "loading": "載入中…",
         "join_first": "請先輸入名字或按跳過",
+        "name_required_hint": "此規劃需要輸入名字才能參加",
+        "name_required_error": "請輸入名字",
     },
     "en": {
         "app_name": "PickADay",
@@ -71,6 +73,8 @@ STRINGS = {
         "replay_tutorial": "Help",
         "loading": "Loading…",
         "join_first": "Enter a name or tap skip first",
+        "name_required_hint": "This plan requires a name to join",
+        "name_required_error": "Please enter a name",
     },
 }
 

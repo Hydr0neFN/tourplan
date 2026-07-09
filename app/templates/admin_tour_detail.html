@@ -24,6 +24,10 @@
         <input type="hidden" name="csrf" value="{{ csrf }}">
         <button class="btn mini" type="submit">{% if tour.show_names %}{% if lang == 'zh' %}改為匿名顯示{% else %}Make anonymous{% endif %}{% else %}{% if lang == 'zh' %}顯示真實名字{% else %}Show real names{% endif %}{% endif %}</button>
       </form>
+      <form method="post" action="/admin/tours/{{ tour.id }}/toggle-require-name">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <button class="btn mini" type="submit">{% if tour.require_name %}{% if lang == 'zh' %}允許跳過名字{% else %}Allow skipping name{% endif %}{% else %}{% if lang == 'zh' %}改為必須輸入名字{% else %}Require a name{% endif %}{% endif %}</button>
+      </form>
       <form method="post" action="/admin/tours/{{ tour.id }}/delete" onsubmit="return confirm('{% if lang == 'zh' %}確定刪除整個規劃與所有回覆？{% else %}Delete this plan and all responses?{% endif %}')">
         <input type="hidden" name="csrf" value="{{ csrf }}">
         <button class="btn mini danger" type="submit">{% if lang == 'zh' %}刪除{% else %}Delete{% endif %}</button>

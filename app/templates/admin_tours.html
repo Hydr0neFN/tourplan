@@ -49,6 +49,13 @@
             <option value="0">{% if lang == 'zh' %}匿名（只顯示圖示暱稱）{% else %}Anonymous (icon nicknames){% endif %}</option>
           </select>
         </div>
+        <div>
+          <label>{% if lang == 'zh' %}加入方式{% else %}Joining{% endif %}</label>
+          <select name="require_name" style="font:inherit; padding:8px 10px; border:1px solid var(--line); border-radius:8px">
+            <option value="0">{% if lang == 'zh' %}可跳過名字（匿名加入）{% else %}Allow skipping name{% endif %}</option>
+            <option value="1">{% if lang == 'zh' %}必須輸入名字{% else %}Require a name{% endif %}</option>
+          </select>
+        </div>
         <button class="btn primary mini" type="submit" style="padding:9px 18px">{% if lang == 'zh' %}建立{% else %}Create{% endif %}</button>
       </div>
     </form>

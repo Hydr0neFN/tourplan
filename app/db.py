@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS tours(
   date_start TEXT NOT NULL,
   date_end TEXT NOT NULL,
   show_names INTEGER NOT NULL DEFAULT 1,
+  require_name INTEGER NOT NULL DEFAULT 0,
   status TEXT NOT NULL DEFAULT 'open',
   owner_id INTEGER,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -62,6 +63,8 @@ def init() -> None:
             con.execute("ALTER TABLE tours ADD COLUMN deadline TEXT")
         if "owner_id" not in cols:
             con.execute("ALTER TABLE tours ADD COLUMN owner_id INTEGER")
+        if "require_name" not in cols:
+            con.execute("ALTER TABLE tours ADD COLUMN require_name INTEGER NOT NULL DEFAULT 0")
         con.commit()
     finally:
         con.close()

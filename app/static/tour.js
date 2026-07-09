@@ -203,16 +203,24 @@
   var modalRoot = document.getElementById("modal-root");
 
   function showJoinModal() {
+    var required = !!state.tour.require_name;
     modalRoot.innerHTML =
       '<div class="overlay"><div class="dialog">' +
       "<h2>" + esc(T.name_title) + "</h2>" +
-      "<p>" + esc(T.name_hint) + "</p>" +
+      "<p>" + esc(required ? T.name_required_hint : T.name_hint) + "</p>" +
       '<input id="join-name" maxlength="20" placeholder="' + esc(T.name_placeholder) + '">' +
+      '<p id="join-err" class="err" style="display:none; margin:-8px 0 12px; font-size:13px;"></p>' +
       '<div class="btnrow">' +
-      '<button class="btn" id="join-skip">' + esc(T.skip) + "</button>" +
+      (required ? "" : '<button class="btn" id="join-skip">' + esc(T.skip) + "</button>") +
       '<button class="btn primary" id="join-go">' + esc(T["continue"]) + "</button>" +
       "</div></div></div>";
     function join(name) {
+      if (required && !name.trim()) {
+        var err = document.getElementById("join-err");
+        err.textContent = T.name_required_error;
+        err.style.display = "block";
+        return;
+      }
       api("/join", { name: name }).then(function (next) {
         modalRoot.innerHTML = "";
         applyState(next);
@@ -220,7 +228,8 @@
         startPoll();
       }).catch(function () { modalRoot.innerHTML = ""; });
     }
-    document.getElementById("join-skip").onclick = function () { join(""); };
+    var skipBtn = document.getElementById("join-skip");
+    if (skipBtn) skipBtn.onclick = function () { join(""); };
     document.getElementById("join-go").onclick = function () {
       join(document.getElementById("join-name").value);
     };
