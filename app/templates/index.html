@@ -3,6 +3,9 @@
 <main class="shell center">
   <h1>📅 {{ t.app_name }}</h1>
   <p class="muted">{% if lang == 'zh' %}請向主辦人索取規劃連結{% else %}Ask the host for your plan link{% endif %}</p>
+  <p>
+    <a class="btn primary" href="/admin" style="display:inline-block; width:auto; padding:9px 22px; text-decoration:none;">{% if lang == 'zh' %}前往管理{% else %}Go to admin{% endif %}</a>
+  </p>
   <p><a class="lang-pill" href="?lang={{ t.lang_other }}">{{ t.lang_toggle }}</a></p>
 </main>
 {% endblock %}
