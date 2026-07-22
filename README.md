@@ -1,6 +1,9 @@
 # 揪日子 tourplan
 
 **A tiny self-hosted date-picking app for group trips — built for families, including the least tech-savvy members.**
+<img width="503" height="861" alt="image" src="https://github.com/user-attachments/assets/d457e1fe-2d1f-4dbe-b010-eb2190a90c7d" />
+
+<img width="867" height="866" alt="image" src="https://github.com/user-attachments/assets/b54eff93-ca3a-41a1-b8a5-8751dbc59c90" />
 
 一個超輕量的「揪團選日子」網頁app：主辦人開一個規劃、圈出可選的日期範圍，家人朋友點開連結、點日期表達「可以／不行」，主辦人一眼看出哪天最多人有空。專為手機與長輩設計。
 
