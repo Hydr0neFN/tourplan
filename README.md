@@ -1,3 +1,5 @@
+**English** · [繁體中文](README.zh-TW.md)
+
 # 揪日子 tourplan
 
 **A tiny self-hosted date-picking app for group trips — built for families, including the least tech-savvy members.**
