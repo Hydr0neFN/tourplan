@@ -9,5 +9,14 @@
 </head>
 <body>
 {% block body %}{% endblock %}
+<script>
+// Confirmation text lives in data-confirm, never in an inline handler: user-supplied
+// names end up in these prompts, and an attribute that is parsed as JavaScript turns
+// an HTML-escaped quote back into a live one.
+document.addEventListener("submit", function (e) {
+  var msg = e.target.getAttribute && e.target.getAttribute("data-confirm");
+  if (msg && !confirm(msg)) e.preventDefault();
+});
+</script>
 </body>
 </html>

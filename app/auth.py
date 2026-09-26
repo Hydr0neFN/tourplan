@@ -87,7 +87,13 @@ def read_admin_session(cookie: str | None) -> tuple[int, str] | None:
 
 
 class Throttle:
-    """Sliding-window per-key attempt limiter (in-memory)."""
+    """Sliding-window per-key attempt limiter (in-memory).
+
+    Keys are client IPs checked before any auth or slug lookup, so every distinct
+    address would otherwise stay in memory forever: aged-out keys are dropped, and
+    past MAX_KEYS the table is swept (then trimmed oldest-first) on insert."""
+
+    MAX_KEYS = 10_000
 
     def __init__(self, max_attempts: int = 5, window_sec: int = 300) -> None:
         self.max = max_attempts
@@ -97,11 +103,23 @@ class Throttle:
     def allow(self, key: str) -> bool:
         now = time.time()
         lst = [t for t in self.hits.get(key, []) if now - t < self.window]
-        self.hits[key] = lst
+        if lst:
+            self.hits[key] = lst
+        else:
+            self.hits.pop(key, None)
         return len(lst) < self.max
 
     def record(self, key: str) -> None:
+        if key not in self.hits and len(self.hits) >= self.MAX_KEYS:
+            self._sweep()
         self.hits.setdefault(key, []).append(time.time())
+
+    def _sweep(self) -> None:
+        now = time.time()
+        for k in [k for k, v in self.hits.items() if not v or now - v[-1] >= self.window]:
+            del self.hits[k]
+        while len(self.hits) >= self.MAX_KEYS:  # all still live: drop the oldest keys
+            del self.hits[next(iter(self.hits))]
 
 
 login_throttle = Throttle()
