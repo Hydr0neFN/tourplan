@@ -38,10 +38,16 @@ FastAPI · SQLite (WAL) · Jinja2 · 原生 JS。無需建置步驟、無需 Nod
 git clone https://github.com/<you>/tourplan && cd tourplan
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt          # Windows: .venv\Scripts\pip
-.venv/bin/python -m uvicorn app.main:app --port 8100
+.venv/bin/python -m uvicorn app.main:app --port 8100   # first start: see below
 ```
 
-開啟 `http://127.0.0.1:8100/admin` — 首次登入為 `admin` / `admin`；您必須立即設定新密碼。建立規劃、複製連結並分享出去。
+沒有預設登入帳號。首次啟動時（尚無任何管理員），若未設定 `TOURPLAN_ADMIN_PASSWORD`（至少 8 個字元；亦可另設 `TOURPLAN_ADMIN_USER`，預設為 `admin`），程式會拒絕啟動；設定後則會以此建立第一位管理員：
+
+```bash
+TOURPLAN_ADMIN_PASSWORD='something-long' .venv/bin/python -m uvicorn app.main:app --port 8100
+```
+
+開啟 `http://127.0.0.1:8100/admin` 登入，建立規劃、複製連結並分享出去。已有管理員後，後續啟動時會忽略此變數 —— 您可以將其移除。
 
 ## 部署（Raspberry Pi / 任何 Debian 系列主機 + Cloudflare Tunnel）
 
@@ -52,11 +58,21 @@ git clone https://github.com/<you>/tourplan /root/tourplan
 cd /root/tourplan
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 
+# service user + permissions for the hardened unit (see below)
+sudo useradd --system --no-create-home --shell /usr/sbin/nologin tourplan
+mkdir -p data && sudo chmod -R go+rX,go-w /root/tourplan
+sudo chown -R tourplan:tourplan data && sudo chmod 700 data && sudo chmod -f 600 data/*
+
+# first-start admin credentials, root-only
+printf 'TOURPLAN_ADMIN_PASSWORD=%s\n' 'something-long' | sudo install -m 600 /dev/stdin /etc/tourplan.env
+
 # systemd
 sudo cp deploy/tourplan.service /etc/systemd/system/
 sudo nano /etc/systemd/system/tourplan.service   # set TOURPLAN_BASE_URL + paths for your box
 sudo systemctl daemon-reload && sudo systemctl enable --now tourplan
 ```
+
+**強化服務設定。** unit 以無特權的 `tourplan` 使用者身分執行、不具備任何 capability、作業系統設為唯讀，`/root` 與 `/home` 則以空的 tmpfs 遮蔽：只有程式目錄以唯讀方式掛載回來，且只有 `data/` 可寫入。因此即使程式遭到入侵，也無法讀取同一台主機上其他服務的金鑰（例如 `/root/.env`），更無法存取主機的其他部分。在主機上更新程式碼後，請您再執行一次 `chmod go+rX` 那一行，讓服務使用者能讀取程式碼。
 
 Cloudflare Tunnel ingress（位於 `/etc/cloudflared/config.yml` 的 catch-all 之上）：
 
@@ -65,7 +81,7 @@ Cloudflare Tunnel ingress（位於 `/etc/cloudflared/config.yml` 的 catch-all �
   service: http://localhost:8100
 ```
 
-建議的強化措施：在 Tunnel 上線**之前**更改預設管理員密碼，並新增 Cloudflare WAF 規則將 `/admin*` 限制在您所在的國家／地區。
+建議的強化措施：新增 Cloudflare WAF 規則，將 `/admin*` 限制在您所在的國家／地區。
 
 每日夜間備份（SQLite 線上備份，7 份輪替複本）：
 
@@ -77,7 +93,9 @@ Cloudflare Tunnel ingress（位於 `/etc/cloudflared/config.yml` 的 catch-all �
 
 | 環境變數 | 預設值 | 意義 |
 |---|---|---|
-| `TOURPLAN_BASE_URL` | request-derived | 管理員「複製連結」按鈕所使用的公開基礎 URL |
+| `TOURPLAN_BASE_URL` | request-derived | 管理員「複製連結」按鈕所使用的公開基礎 URL；若以 `https://` 開頭，亦會啟用 `Secure` cookie 與 HSTS |
+| `TOURPLAN_ADMIN_PASSWORD` | — | 僅首次啟動時使用：第一位管理員的密碼（至少 8 個字元）。尚無管理員時為必填 |
+| `TOURPLAN_ADMIN_USER` | `admin` | 僅首次啟動時使用：第一位管理員的使用者名稱 |
 | `TOURPLAN_MAX_VISITORS` | `60` | 每個規劃的最大參與者人數 |
 
 所有狀態均儲存在 `data/`：`tourplan.db`（SQLite）與 `secret.key`（cookie 簽章金鑰 — 遺失會使所有人登出；外洩會讓任何人都能偽造 session）。
