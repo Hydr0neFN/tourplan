@@ -1,6 +1,7 @@
 """tourplan — family tour date-picking app (FastAPI + SQLite)."""
 import datetime
 import hashlib
+import hmac
 import os
 import pathlib
 import secrets
@@ -35,6 +36,8 @@ async def static_cache_headers(request: Request, call_next):
     resp = await call_next(request)
     if request.url.path.startswith("/static/"):
         resp.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+    if secure_cookies():
+        resp.headers["Strict-Transport-Security"] = "max-age=31536000"
     return resp
 
 MAX_RANGE_DAYS = 370
@@ -54,6 +57,11 @@ def client_ip(request: Request) -> str:
 
 def external_base_url(request: Request) -> str:
     return os.environ.get("TOURPLAN_BASE_URL", "").rstrip("/") or str(request.base_url).rstrip("/")
+
+
+def secure_cookies() -> bool:
+    """Deployed behind HTTPS (per TOURPLAN_BASE_URL) -> Secure cookies + HSTS."""
+    return os.environ.get("TOURPLAN_BASE_URL", "").lower().startswith("https://")
 
 
 TW_TZ = datetime.timezone(datetime.timedelta(hours=8))
@@ -79,9 +87,18 @@ def startup() -> None:
     con = db.connect()
     try:
         if con.execute("SELECT COUNT(*) c FROM admins").fetchone()["c"] == 0:
+            # No default credentials: a public instance must never come up with a
+            # guessable admin. Bootstrap the first admin from the environment only.
+            username = os.environ.get("TOURPLAN_ADMIN_USER", "admin").strip()[:30]
+            password = os.environ.get("TOURPLAN_ADMIN_PASSWORD", "")
+            if not username or len(password) < 8 or password == "admin":
+                raise RuntimeError(
+                    "no admin account exists: set TOURPLAN_ADMIN_PASSWORD (>= 8 chars, "
+                    "optionally TOURPLAN_ADMIN_USER) for the first start"
+                )
             con.execute(
-                "INSERT INTO admins(username, pw_hash, must_change) VALUES(?,?,1)",
-                ("admin", auth.hash_password("admin")),
+                "INSERT INTO admins(username, pw_hash, must_change) VALUES(?,?,0)",
+                (username, auth.hash_password(password)),
             )
         con.execute(
             "UPDATE tours SET owner_id=(SELECT MIN(id) FROM admins) WHERE owner_id IS NULL"
@@ -98,7 +115,9 @@ def lang_of(request: Request) -> str:
 def with_lang_cookie(request: Request, response: Response) -> Response:
     q = request.query_params.get("lang")
     if q:
-        response.set_cookie("lang", pick_lang(q), max_age=365 * 86400, samesite="lax")
+        response.set_cookie(
+            "lang", pick_lang(q), max_age=365 * 86400, samesite="lax", secure=secure_cookies()
+        )
     return response
 
 
@@ -274,6 +293,7 @@ def join(request: Request, slug: str, body: dict = Body(default={})):
         auth.signer.sign(me["token"]),
         max_age=VISITOR_COOKIE_DAYS * 86400,
         httponly=True,
+        secure=secure_cookies(),
         samesite="lax",
         path=f"/t/{tour['slug']}",
     )
@@ -333,20 +353,26 @@ def state(request: Request, slug: str):
 # ---------------------------------------------------------------- admin side
 
 def current_admin(request: Request) -> sqlite3.Row | None:
-    admin_id = auth.read_admin_session(request.cookies.get("admsess"))
-    if admin_id is None:
+    sess = auth.read_admin_session(request.cookies.get("admsess"))
+    if sess is None:
         return None
+    admin_id, pw_tag = sess
     con = db.connect()
     try:
-        return con.execute("SELECT * FROM admins WHERE id=?", (admin_id,)).fetchone()
+        row = con.execute("SELECT * FROM admins WHERE id=?", (admin_id,)).fetchone()
     finally:
         con.close()
+    # A password change, or a deleted id reused by a new admin, changes pw_hash
+    # and so invalidates every session issued before it.
+    if not row or not hmac.compare_digest(pw_tag, auth.pw_tag(row["pw_hash"])):
+        return None
+    return row
 
 
 def _session_nonce(request: Request) -> str:
     value = auth.signer.unsign(request.cookies.get("admsess")) or ""
     parts = value.split(":")
-    return parts[3] if len(parts) == 4 else ""
+    return parts[3] if len(parts) == 5 else ""
 
 
 def csrf_token(request: Request, admin_id: int) -> str:
@@ -389,12 +415,16 @@ def admin_login(request: Request, username: str = Form(""), password: str = Form
     if not row or not auth.verify_password(password, row["pw_hash"]):
         auth.login_throttle.record(ip)
         return page(request, "admin_login.html", {"error": "bad"}, status_code=401)
-    resp = RedirectResponse("/admin", status_code=303)
+    return set_admin_session(RedirectResponse("/admin", status_code=303), row)
+
+
+def set_admin_session(resp: Response, admin: sqlite3.Row) -> Response:
     resp.set_cookie(
         "admsess",
-        auth.make_admin_session(row["id"]),
+        auth.make_admin_session(admin["id"], admin["pw_hash"]),
         max_age=auth.ADMIN_SESSION_HOURS * 3600,
         httponly=True,
+        secure=secure_cookies(),
         samesite="strict",
         path="/",
     )
@@ -449,9 +479,11 @@ def admin_password(
             (auth.hash_password(new_password), admin["id"]),
         )
         con.commit()
+        admin = con.execute("SELECT * FROM admins WHERE id=?", (admin["id"],)).fetchone()
     finally:
         con.close()
-    return RedirectResponse("/admin", status_code=303)
+    # Old sessions (incl. this one) are now invalid; re-issue for the current browser.
+    return set_admin_session(RedirectResponse("/admin", status_code=303), admin)
 
 
 @app.get("/admin", response_class=HTMLResponse)

@@ -5,12 +5,45 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=root
+User=tourplan
+Group=tourplan
 WorkingDirectory=/root/tourplan
 Environment=TOURPLAN_BASE_URL=https://plan.example.com
+# First start only (empty admins table): the app refuses to start without these. Put them in a
+# root-only file instead of this unit, e.g. /etc/tourplan.env (0600), and remove after first login.
+EnvironmentFile=-/etc/tourplan.env
 ExecStart=/root/tourplan/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8100 --proxy-headers --forwarded-allow-ips 127.0.0.1
 Restart=always
 RestartSec=3
+# --- sandbox: an RCE in the app must not reach the host, HA/UniFi or /root/.env ---
+# /root and /home are replaced by empty read-only tmpfs; only the app dir comes back
+# (read-only) and only data/ is writable. (ProtectHome=tmpfs would keep /root at 0700,
+# so the service user could not reach its own bind mount.) Deploy prep: README "Hardened service".
+TemporaryFileSystem=/root:ro,mode=0755 /home:ro /run/user:ro
+BindReadOnlyPaths=/root/tourplan
+BindPaths=/root/tourplan/data
+ProtectSystem=strict
+PrivateTmp=yes
+PrivateDevices=yes
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectProc=invisible
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+UMask=0077
 
 [Install]
 WantedBy=multi-user.target

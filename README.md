@@ -38,10 +38,16 @@ Passwords are scrypt-hashed (stdlib), sessions and visitor tokens are HMAC-signe
 git clone https://github.com/<you>/tourplan && cd tourplan
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt          # Windows: .venv\Scripts\pip
-.venv/bin/python -m uvicorn app.main:app --port 8100
+.venv/bin/python -m uvicorn app.main:app --port 8100   # first start: see below
 ```
 
-Open `http://127.0.0.1:8100/admin` — first login is `admin` / `admin`; you must set a new password immediately. Create a plan, copy its link, share it.
+There is no default login. On the first start (no admin exists yet) the app refuses to start unless `TOURPLAN_ADMIN_PASSWORD` (≥ 8 chars; optionally `TOURPLAN_ADMIN_USER`, default `admin`) is set, and creates that admin from it:
+
+```bash
+TOURPLAN_ADMIN_PASSWORD='something-long' .venv/bin/python -m uvicorn app.main:app --port 8100
+```
+
+Open `http://127.0.0.1:8100/admin`, log in, create a plan, copy its link, share it. Later starts ignore the variable once an admin exists — drop it.
 
 ## Deploy (Raspberry Pi / any Debian-ish box + Cloudflare Tunnel)
 
@@ -52,11 +58,21 @@ git clone https://github.com/<you>/tourplan /root/tourplan
 cd /root/tourplan
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 
+# service user + permissions for the hardened unit (see "Hardened service" below)
+sudo useradd --system --no-create-home --shell /usr/sbin/nologin tourplan
+mkdir -p data && sudo chmod -R go+rX,go-w /root/tourplan
+sudo chown -R tourplan:tourplan data && sudo chmod 700 data && sudo chmod -f 600 data/*
+
+# first-start admin credentials, root-only
+printf 'TOURPLAN_ADMIN_PASSWORD=%s\n' 'something-long' | sudo install -m 600 /dev/stdin /etc/tourplan.env
+
 # systemd
 sudo cp deploy/tourplan.service /etc/systemd/system/
 sudo nano /etc/systemd/system/tourplan.service   # set TOURPLAN_BASE_URL + paths for your box
 sudo systemctl daemon-reload && sudo systemctl enable --now tourplan
 ```
+
+**Hardened service.** The unit runs as the unprivileged `tourplan` user with no capabilities, a read-only OS, and `/root` + `/home` hidden behind an empty tmpfs: only the app directory is mapped back (read-only) and only `data/` is writable. An exploit in the app therefore cannot read other services' secrets on a shared box (e.g. `/root/.env`) or touch the rest of the host. After changing the code on the box, re-run the `chmod go+rX` line so the service user can read it.
 
 Cloudflare Tunnel ingress (above the catch-all in `/etc/cloudflared/config.yml`):
 
@@ -65,7 +81,7 @@ Cloudflare Tunnel ingress (above the catch-all in `/etc/cloudflared/config.yml`)
   service: http://localhost:8100
 ```
 
-Recommended hardening: change the default admin password **before** the tunnel goes live, and add a Cloudflare WAF rule geo-restricting `/admin*` to your country.
+Recommended hardening: add a Cloudflare WAF rule geo-restricting `/admin*` to your country.
 
 Nightly backup (SQLite online backup, 7 rotating copies):
 
@@ -77,7 +93,9 @@ Nightly backup (SQLite online backup, 7 rotating copies):
 
 | Env var | Default | Meaning |
 |---|---|---|
-| `TOURPLAN_BASE_URL` | request-derived | Public base URL used by the admin "copy link" button |
+| `TOURPLAN_BASE_URL` | request-derived | Public base URL used by the admin "copy link" button; an `https://` value also turns on `Secure` cookies and HSTS |
+| `TOURPLAN_ADMIN_PASSWORD` | — | First start only: password for the initial admin (≥ 8 chars). Required while no admin exists |
+| `TOURPLAN_ADMIN_USER` | `admin` | First start only: username for the initial admin |
 | `TOURPLAN_MAX_VISITORS` | `60` | Max participants per plan |
 
 All state lives in `data/`: `tourplan.db` (SQLite) and `secret.key` (cookie-signing key — losing it logs everyone out; leaking it lets anyone forge sessions).

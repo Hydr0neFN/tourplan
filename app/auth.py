@@ -58,16 +58,23 @@ signer = Signer()
 ADMIN_SESSION_HOURS = 12
 
 
-def make_admin_session(admin_id: int) -> str:
-    return signer.sign(f"adm:{admin_id}:{int(time.time())}:{secrets.token_hex(8)}")
+def pw_tag(pw_hash: str) -> str:
+    """Short fingerprint of an admin's current pw_hash, bound into the session."""
+    return hashlib.sha256(pw_hash.encode()).hexdigest()[:16]
 
 
-def read_admin_session(cookie: str | None) -> int | None:
+def make_admin_session(admin_id: int, pw_hash: str) -> str:
+    return signer.sign(
+        f"adm:{admin_id}:{int(time.time())}:{secrets.token_hex(8)}:{pw_tag(pw_hash)}"
+    )
+
+
+def read_admin_session(cookie: str | None) -> tuple[int, str] | None:
     value = signer.unsign(cookie)
     if not value:
         return None
     parts = value.split(":")
-    if len(parts) != 4 or parts[0] != "adm":
+    if len(parts) != 5 or parts[0] != "adm":
         return None
     try:
         admin_id = int(parts[1])
@@ -76,7 +83,7 @@ def read_admin_session(cookie: str | None) -> int | None:
         return None
     if time.time() - issued > ADMIN_SESSION_HOURS * 3600:
         return None
-    return admin_id
+    return admin_id, parts[4]
 
 
 class Throttle:
